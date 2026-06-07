@@ -11,6 +11,7 @@ import {
   clearAllData,
 } from './lib/storage';
 import { sendMessage, getErrorMessage } from './lib/openai';
+import { createStreamPacer } from './lib/streamPacer';
 
 /**
  * Root component.
@@ -28,6 +29,8 @@ export default function App() {
   const [isGenerating, setIsGenerating] = useState(false);
 
   const abortRef = useRef(null);
+  const pacerRef = useRef(null);
+  const pacerDoneRef = useRef(null);
 
   // Apply theme
   useEffect(() => {
@@ -103,6 +106,13 @@ export default function App() {
     }
   }, [currentId]);
 
+  const RESPONSE_SPEED_DELAYS = {
+    instant: 0,
+    fast: 8,
+    normal: 20,
+    slow: 45,
+  };
+
   const handleSendMessage = useCallback(
     async (text) => {
       let convId = currentId;
@@ -163,22 +173,27 @@ export default function App() {
         return conv ? [...conv.messages, userMsg] : [userMsg];
       })();
 
+      // Compute visual pacing delay
+      const chunkDelay =
+        settings.responseSpeed === 'custom'
+          ? Number(settings.customChunkDelayMs) || 0
+          : (RESPONSE_SPEED_DELAYS[settings.responseSpeed] ?? 20);
+
+      const thinkingDelay = Number(settings.thinkingDelayMs) || 0;
+
       const controller = new AbortController();
       abortRef.current = controller;
       setIsGenerating(true);
 
       let fullContent = '';
+      const pacerDonePromise = new Promise((resolve) => {
+        pacerDoneRef.current = resolve;
+      });
 
-      const result = await sendMessage({
-        messages: allMessages,
-        systemPrompt: settings.systemPrompt,
-        model: settings.model,
-        temperature: settings.temperature,
-        maxTokens: settings.maxTokens,
-        apiKey: settings.apiKey,
-        signal: controller.signal,
-        onChunk: (delta) => {
-          fullContent += delta;
+      const pacer = createStreamPacer({
+        delayMs: chunkDelay,
+        onText: (chunk) => {
+          fullContent += chunk;
           updateConversation(convId, (c) => ({
             ...c,
             messages: c.messages.map((m) =>
@@ -188,21 +203,91 @@ export default function App() {
             ),
           }));
         },
+        onDone: () => {
+          if (pacerDoneRef.current) {
+            pacerDoneRef.current();
+            pacerDoneRef.current = null;
+          }
+        },
       });
 
-      // Determine final status from the result
+      pacerRef.current = pacer;
+
+      // Thinking delay — wait before visible output begins
+      if (thinkingDelay > 0 && !controller.signal.aborted) {
+        try {
+          await new Promise((resolve, reject) => {
+            const timer = setTimeout(resolve, thinkingDelay);
+            const onAbort = () => {
+              clearTimeout(timer);
+              reject(new DOMException('Aborted', 'AbortError'));
+            };
+            controller.signal.addEventListener('abort', onAbort, { once: true });
+          });
+        } catch {
+          // Aborted during thinking delay — skip API call
+        }
+      }
+
+      // Send to API (if not already aborted)
+      let result = { content: '' };
+      if (!controller.signal.aborted) {
+        result = await sendMessage({
+          messages: allMessages,
+          systemPrompt: settings.systemPrompt,
+          model: settings.model,
+          temperature: settings.temperature,
+          maxTokens: settings.maxTokens,
+          apiKey: settings.apiKey,
+          signal: controller.signal,
+          onChunk: (delta) => {
+            // Feed chunks into the visual pacer instead of updating directly
+            if (pacerRef.current) {
+              pacerRef.current.enqueue(delta);
+            }
+          },
+        });
+      }
+
+      // Determine final status
       let finalStatus = 'done';
       let errorMessage;
 
       if (result.error === 'aborted') {
+        // Stop the pacer immediately — keep partial content
+        if (pacerRef.current) {
+          pacerRef.current.stop();
+          pacerRef.current = null;
+        }
+        if (pacerDoneRef.current) {
+          pacerDoneRef.current();
+          pacerDoneRef.current = null;
+        }
         finalStatus = fullContent ? 'stopped' : 'done';
       } else if (result.error) {
+        if (pacerRef.current) {
+          pacerRef.current.stop();
+          pacerRef.current = null;
+        }
+        if (pacerDoneRef.current) {
+          pacerDoneRef.current();
+          pacerDoneRef.current = null;
+        }
         finalStatus = 'error';
         errorMessage = getErrorMessage(result.error);
+      } else {
+        // API finished successfully — tell pacer to finish flushing
+        if (pacerRef.current) {
+          pacerRef.current.finish();
+        }
+        // pacerDonePromise resolves via onDone, or via handleStopGeneration
+        await pacerDonePromise;
       }
 
       setIsGenerating(false);
       abortRef.current = null;
+      pacerRef.current = null;
+      pacerDoneRef.current = null;
 
       // Final update to the assistant message
       updateConversation(convId, (c) => ({
@@ -232,6 +317,15 @@ export default function App() {
   const handleStopGeneration = useCallback(() => {
     if (abortRef.current) {
       abortRef.current.abort();
+    }
+    if (pacerRef.current) {
+      pacerRef.current.stop();
+      pacerRef.current = null;
+    }
+    // Resolve the pacer done promise so handleSendMessage can finalize
+    if (pacerDoneRef.current) {
+      pacerDoneRef.current();
+      pacerDoneRef.current = null;
     }
   }, []);
 

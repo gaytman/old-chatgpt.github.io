@@ -13,6 +13,9 @@ export default function SettingsModal({ settings, onUpdateSettings, onClearAllDa
   const [maxTokens, setMaxTokens] = useState(settings.maxTokens);
   const [systemPrompt, setSystemPrompt] = useState(settings.systemPrompt);
   const [theme, setTheme] = useState(settings.theme);
+  const [responseSpeed, setResponseSpeed] = useState(settings.responseSpeed || 'normal');
+  const [customChunkDelayMs, setCustomChunkDelayMs] = useState(settings.customChunkDelayMs ?? 20);
+  const [thinkingDelayMs, setThinkingDelayMs] = useState(settings.thinkingDelayMs ?? 280);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [showKey, setShowKey] = useState(false);
 
@@ -53,9 +56,12 @@ export default function SettingsModal({ settings, onUpdateSettings, onClearAllDa
       maxTokens: Number(maxTokens),
       systemPrompt,
       theme,
+      responseSpeed,
+      customChunkDelayMs: Number(customChunkDelayMs),
+      thinkingDelayMs: Number(thinkingDelayMs),
     });
     onClose();
-  }, [apiKey, model, temperature, maxTokens, systemPrompt, theme, onUpdateSettings, onClose]);
+  }, [apiKey, model, temperature, maxTokens, systemPrompt, theme, responseSpeed, customChunkDelayMs, thinkingDelayMs, onUpdateSettings, onClose]);
 
   const handleNostalgiaMode = useCallback(() => {
     setSystemPrompt(GPT35_NOSTALGIA_PROMPT);
@@ -170,6 +176,75 @@ export default function SettingsModal({ settings, onUpdateSettings, onClearAllDa
               value={maxTokens}
               onChange={(e) => setMaxTokens(e.target.value)}
             />
+          </div>
+
+          {/* Response speed */}
+          <div className="form-group">
+            <label className="form-label" htmlFor="response-speed">
+              Response Speed
+            </label>
+            <p className="form-helper">
+              Response speed controls how quickly text appears on screen.
+              It does not change the actual API speed.
+            </p>
+            <select
+              id="response-speed"
+              className="form-select"
+              value={responseSpeed}
+              onChange={(e) => setResponseSpeed(e.target.value)}
+            >
+              <option value="instant">Instant</option>
+              <option value="fast">Fast</option>
+              <option value="normal">Normal</option>
+              <option value="slow">Slow</option>
+              <option value="custom">Custom</option>
+            </select>
+          </div>
+
+          {responseSpeed === 'custom' && (
+            <div className="form-group">
+              <label className="form-label" htmlFor="custom-chunk-delay">
+                Delay per chunk: {customChunkDelayMs}ms
+              </label>
+              <input
+                id="custom-chunk-delay"
+                className="form-range"
+                type="range"
+                min="0"
+                max="100"
+                step="1"
+                value={customChunkDelayMs}
+                onChange={(e) => setCustomChunkDelayMs(e.target.value)}
+              />
+              <div className="range-labels">
+                <span>0ms</span>
+                <span>50ms</span>
+                <span>100ms</span>
+              </div>
+            </div>
+          )}
+
+          {/* Thinking delay */}
+          <div className="form-group">
+            <label className="form-label" htmlFor="thinking-delay">
+              Thinking delay: {thinkingDelayMs}ms
+            </label>
+            <p className="form-helper">Set to 0 to disable the initial thinking pause.</p>
+            <input
+              id="thinking-delay"
+              className="form-range"
+              type="range"
+              min="0"
+              max="800"
+              step="10"
+              value={thinkingDelayMs}
+              onChange={(e) => setThinkingDelayMs(e.target.value)}
+            />
+            <div className="range-labels">
+              <span>0ms</span>
+              <span>400ms</span>
+              <span>800ms</span>
+            </div>
           </div>
 
           {/* System prompt */}

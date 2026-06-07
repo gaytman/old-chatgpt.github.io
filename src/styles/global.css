@@ -964,6 +964,13 @@ textarea {
   margin-bottom: var(--spacing-sm);
 }
 
+.form-helper {
+  font-size: var(--font-size-sm);
+  color: var(--text-muted);
+  margin-bottom: var(--spacing-sm);
+  line-height: 1.5;
+}
+
 .form-label-row {
   display: flex;
   align-items: center;

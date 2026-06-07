@@ -1,8 +1,9 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { Copy, Check, RefreshCw, Edit3, User, Bot } from 'lucide-react';
+import { Copy, Check, RefreshCw, Edit3, User } from 'lucide-react';
 import CodeBlock, { InlineCode } from './CodeBlock';
+import OpenAIIcon from './icons/OpenAIIcon';
 
 /**
  * Renders a single chat message (user or assistant).
@@ -79,7 +80,7 @@ export default function Message({
     <div className="message-row" style={{ backgroundColor: rowBg }}>
       <div className="message-row-inner">
         <div className="message-avatar">
-          {isUser ? <User size={18} /> : <Bot size={18} />}
+          {isUser ? <User size={18} /> : <OpenAIIcon size={18} />}
         </div>
 
         <div className="message-body">

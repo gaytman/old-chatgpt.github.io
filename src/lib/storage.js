@@ -66,6 +66,9 @@ export function loadSettings() {
     maxTokens: DEFAULT_MAX_TOKENS,
     systemPrompt: DEFAULT_SYSTEM_PROMPT,
     theme: 'dark',
+    responseSpeed: 'normal',
+    customChunkDelayMs: 20,
+    thinkingDelayMs: 280,
   };
   const parsed = safeParse(raw, {});
   return { ...defaults, ...parsed };
