@@ -69,6 +69,7 @@ export function loadSettings() {
     responseSpeed: 'normal',
     customChunkDelayMs: 20,
     thinkingDelayMs: 280,
+    userAvatarDataUrl: '',
   };
   const parsed = safeParse(raw, {});
   return { ...defaults, ...parsed };

@@ -3,7 +3,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Copy, Check, RefreshCw, Edit3, User } from 'lucide-react';
 import CodeBlock, { InlineCode } from './CodeBlock';
-import OpenAIIcon from './icons/OpenAIIcon';
+import ChatGPTAvatar from './icons/ChatGPTAvatar';
 
 /**
  * Renders a single chat message (user or assistant).
@@ -16,6 +16,7 @@ export default function Message({
   onCopy,
   onRegenerate,
   onEdit,
+  userAvatarDataUrl,
 }) {
   const [copied, setCopied] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -80,7 +81,22 @@ export default function Message({
     <div className="message-row" style={{ backgroundColor: rowBg }}>
       <div className="message-row-inner">
         <div className="message-avatar">
-          {isUser ? <User size={18} /> : <OpenAIIcon size={18} />}
+          {isUser ? (
+            userAvatarDataUrl ? (
+              <img
+                className="user-avatar-img"
+                src={userAvatarDataUrl}
+                alt="User"
+                width={30}
+                height={30}
+                draggable={false}
+              />
+            ) : (
+              <User size={18} />
+            )
+          ) : (
+            <ChatGPTAvatar size={30} />
+          )}
         </div>
 
         <div className="message-body">

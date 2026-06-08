@@ -19,6 +19,7 @@ export default function ChatWindow({
   onEditMessage,
   hasApiKey,
   onToggleSidebar,
+  userAvatarDataUrl,
 }) {
   const messagesEndRef = useRef(null);
   const scrollContainerRef = useRef(null);
@@ -79,6 +80,7 @@ export default function ChatWindow({
               onEdit={
                 msg.role === 'user' ? onEditMessage : undefined
               }
+              userAvatarDataUrl={userAvatarDataUrl}
             />
           ))}
           <div ref={messagesEndRef} />

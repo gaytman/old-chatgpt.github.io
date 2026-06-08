@@ -425,6 +425,7 @@ export default function App() {
         onEditMessage={handleEditMessage}
         hasApiKey={!!settings.apiKey?.trim()}
         onToggleSidebar={() => setSidebarOpen((v) => !v)}
+        userAvatarDataUrl={settings.userAvatarDataUrl || ''}
       />
 
       {settingsOpen && (

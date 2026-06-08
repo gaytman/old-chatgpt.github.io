@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { X, AlertTriangle } from 'lucide-react';
 import { GPT35_NOSTALGIA_PROMPT, DEFAULT_MODEL, DEFAULT_TEMPERATURE, DEFAULT_MAX_TOKENS } from '../lib/prompts';
+import { fileToAvatarDataUrl } from '../lib/imageUtils';
 
 /**
  * Settings modal.
@@ -16,6 +17,8 @@ export default function SettingsModal({ settings, onUpdateSettings, onClearAllDa
   const [responseSpeed, setResponseSpeed] = useState(settings.responseSpeed || 'normal');
   const [customChunkDelayMs, setCustomChunkDelayMs] = useState(settings.customChunkDelayMs ?? 20);
   const [thinkingDelayMs, setThinkingDelayMs] = useState(settings.thinkingDelayMs ?? 280);
+  const [userAvatarDataUrl, setUserAvatarDataUrl] = useState(settings.userAvatarDataUrl || '');
+  const [avatarUploadError, setAvatarUploadError] = useState('');
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [showKey, setShowKey] = useState(false);
 
@@ -48,6 +51,25 @@ export default function SettingsModal({ settings, onUpdateSettings, onClearAllDa
     [onClose]
   );
 
+  const handleAvatarUpload = useCallback(async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setAvatarUploadError('');
+    try {
+      const dataUrl = await fileToAvatarDataUrl(file);
+      setUserAvatarDataUrl(dataUrl);
+    } catch (err) {
+      setAvatarUploadError(err.message || 'Failed to upload image.');
+    }
+    // Reset the file input so the same file can be re-selected
+    e.target.value = '';
+  }, []);
+
+  const handleRemoveAvatar = useCallback(() => {
+    setUserAvatarDataUrl('');
+    setAvatarUploadError('');
+  }, []);
+
   const handleSave = useCallback(() => {
     onUpdateSettings({
       apiKey: apiKey.trim(),
@@ -59,9 +81,10 @@ export default function SettingsModal({ settings, onUpdateSettings, onClearAllDa
       responseSpeed,
       customChunkDelayMs: Number(customChunkDelayMs),
       thinkingDelayMs: Number(thinkingDelayMs),
+      userAvatarDataUrl,
     });
     onClose();
-  }, [apiKey, model, temperature, maxTokens, systemPrompt, theme, responseSpeed, customChunkDelayMs, thinkingDelayMs, onUpdateSettings, onClose]);
+  }, [apiKey, model, temperature, maxTokens, systemPrompt, theme, responseSpeed, customChunkDelayMs, thinkingDelayMs, userAvatarDataUrl, onUpdateSettings, onClose]);
 
   const handleNostalgiaMode = useCallback(() => {
     setSystemPrompt(GPT35_NOSTALGIA_PROMPT);
@@ -282,6 +305,45 @@ export default function SettingsModal({ settings, onUpdateSettings, onClearAllDa
               <option value="light">Light</option>
               <option value="system">System</option>
             </select>
+          </div>
+
+          {/* User profile */}
+          <div className="form-group">
+            <label className="form-label">User profile</label>
+            <p className="form-helper">Stored locally in this browser as a base64 image.</p>
+
+            <div className="avatar-upload-row">
+              {userAvatarDataUrl ? (
+                <img
+                  className="avatar-upload-preview"
+                  src={userAvatarDataUrl}
+                  alt="User avatar preview"
+                  width={64}
+                  height={64}
+                />
+              ) : (
+                <div className="avatar-upload-placeholder">?</div>
+              )}
+              <div className="avatar-upload-actions">
+                <label className="btn-upload-avatar">
+                  Choose image
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="sr-only"
+                    onChange={handleAvatarUpload}
+                  />
+                </label>
+                {userAvatarDataUrl && (
+                  <button className="btn-remove-avatar" onClick={handleRemoveAvatar}>
+                    Remove profile image
+                  </button>
+                )}
+              </div>
+            </div>
+            {avatarUploadError && (
+              <p className="avatar-upload-error">{avatarUploadError}</p>
+            )}
           </div>
 
           {/* Clear all data */}
