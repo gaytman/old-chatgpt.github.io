@@ -10,7 +10,7 @@ import {
   saveSettings,
   clearAllData,
 } from './lib/storage';
-import { sendMessage, getErrorMessage } from './lib/openai';
+import { sendMessage, getErrorMessage, generateTitle } from './lib/openai';
 import { createStreamPacer } from './lib/streamPacer';
 
 /**
@@ -42,6 +42,11 @@ export default function App() {
       document.documentElement.setAttribute('data-theme', theme);
     }
   }, [settings.theme]);
+
+  // Set document.title to current chat title
+  useEffect(() => {
+    document.title = currentConv ? currentConv.title : 'ChatGPT';
+  }, [currentConv]);
 
   // Persist conversations with debounce
   const debouncedSave = useRef(
@@ -303,6 +308,17 @@ export default function App() {
             : m
         ),
       }));
+
+      // Generate AI title after the first exchange completes successfully
+      if (conv && conv.messages.length === 0 && finalStatus === 'done') {
+        generateTitle({ message: text, apiKey: settings.apiKey }).then(
+          (generatedTitle) => {
+            if (generatedTitle) {
+              updateConversation(convId, (c) => ({ ...c, title: generatedTitle }));
+            }
+          }
+        );
+      }
     },
     [currentId, conversations, settings, updateConversation]
   );

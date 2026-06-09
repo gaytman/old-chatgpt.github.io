@@ -171,6 +171,49 @@ export async function sendMessage({
 }
 
 /**
+ * Generate a concise chat title using the ChatGPT API.
+ * Called after the first exchange to produce a smart, descriptive title.
+ *
+ * @param {object} options
+ * @param {string} options.message - The first user message
+ * @param {string} options.apiKey - OpenAI API key
+ * @returns {Promise<string|null>} The generated title, or null on failure
+ */
+export async function generateTitle({ message, apiKey }) {
+  if (!apiKey || !apiKey.trim()) return null;
+
+  try {
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey.trim()}`,
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [
+          {
+            role: 'user',
+            content: `Generate a concise, descriptive title (max 6 words) for a chat conversation that starts with the following message. Return ONLY the title text, no quotes, no explanations. Use the same language as the input message:\n\n"${message}"`,
+          },
+        ],
+        max_tokens: 30,
+        temperature: 0.3,
+      }),
+    });
+
+    if (!response.ok) return null;
+
+    const data = await response.json();
+    const title = data.choices?.[0]?.message?.content?.trim();
+    // Remove any stray quotes the model might still include
+    return title ? title.replace(/^["']|["']$/g, '') : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Get a user-friendly error message for a given error code.
  * @param {string} code
  * @returns {string}
